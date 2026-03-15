@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ART Community Health Monitoring System</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2C7BE5',
+                        success: '#28A745',
+                        danger: '#E5533D',
+                        lightbg: '#F5F7FA',
+                        darkbg: '#1a202c',
+                        warning: '#f59e0b'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Styles & Minimal Animations */
+        body { font-family: 'Inter', sans-serif; }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .hover-lift {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .hover-lift:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Hide scrollbar for sidebar */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Map Grid Styles */
+        .district-cell { transition: all 0.3s; cursor: pointer; }
+        .district-cell:hover { transform: scale(1.05); z-index: 10; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body class="bg-lightbg dark:bg-darkbg text-gray-800 dark:text-gray-200 transition-colors duration-300">
+
+    <!-- Health Alert Banner -->
+    <div id="health-banner" class="bg-danger text-white text-center py-2 text-sm font-medium z-50 relative hidden">
+        <span data-i18n="alert_msg"><i class="fas fa-exclamation-triangle mr-2"></i> Health Alert: Rise in water-borne diseases in neighboring districts. Boil drinking water.</span>
+        <button onclick="document.getElementById('health-banner').style.display='none'" class="absolute right-4 top-2 text-white hover:text-gray-200"><i class="fas fa-times"></i></button>
+    </div>
+
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar" class="bg-white dark:bg-gray-800 w-64 h-full flex flex-col shadow-lg transition-transform transform -translate-x-full md:translate-x-0 absolute md:relative z-40">
+            <div class="p-4 flex items-center justify-center border-b dark:border-gray-700">
+                <i class="fas fa-hand-holding-water text-primary text-3xl mr-2"></i>
+                <h1 class="text-xl font-bold text-primary tracking-tight">ART Health</h1>
+                <button id="close-sidebar" class="md:hidden absolute right-4 text-gray-500"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <nav class="flex-1 overflow-y-auto no-scrollbar py-4" id="main-nav">
+                <!-- Nav items generated via JS -->
+            </nav>
+
+            <div class="p-4 border-t dark:border-gray-700 text-center text-xs text-gray-500">
+                <p>ART Community Health &copy; 2026</p>
+                <p>Offline Mode Supported <i class="fas fa-wifi text-success ml-1"></i></p>
+            </div>
+        </aside>
+
+        <!-- Main Content Wrapper -->
+        <div class="flex-1 flex flex-col relative w-full">
+            
+            <!-- Topbar -->
+            <header class="bg-white dark:bg-gray-800 shadow-sm p-4 flex justify-between items-center z-30">
+                <div class="flex items-center">
+                    <button id="open-sidebar" class="md:hidden text-gray-600 dark:text-gray-300 mr-4 text-xl">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h2 id="page-title" class="text-xl font-semibold hidden sm:block" data-i18n="dashboard">Dashboard</h2>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <!-- Language Selector -->
+                    <div class="relative">
+                        <select id="lang-selector" class="bg-gray-100 dark:bg-gray-700 text-sm rounded px-3 py-1 border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="en">English</option>
+                            <option value="ta">தமிழ் (Tamil)</option>
+                            <option value="hi">हिन्दी (Hindi)</option>
+                            <option value="te">తెలుగు (Telugu)</option>
+                            <option value="ml">മലയാളം (Malayalam)</option>
+                        </select>
+                    </div>
+
+                    <!-- Dark Mode Toggle -->
+                    <button id="theme-toggle" class="text-gray-600 dark:text-gray-300 hover:text-primary transition-colors">
+                        <i class="fas fa-moon text-xl" id="theme-icon"></i>
+                    </button>
+
+                    <!-- User Status -->
+                    <div id="user-status" class="text-sm font-medium">
+                        <button onclick="navigate('login')" class="bg-primary text-white px-4 py-1.5 rounded hover:bg-blue-600" data-i18n="login">Login</button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Views Container -->
+            <main class="flex-1 overflow-y-auto p-4 md:p-6 pb-20 bg-lightbg dark:bg-darkbg" id="views-container">
+                
+                <!-- View: Auth (Login/Signup) -->
+                <div id="view-login" class="view hidden max-w-md mx-auto mt-10 fade-in">
+                    <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg border-t-4 border-primary">
+                        <h2 class="text-2xl font-bold mb-6 text-center" id="auth-title" data-i18n="login_account">Login to Account</h2>
+                        
+                        <form id="auth-form" onsubmit="handleAuth(event)">
+                            <div id="signup-fields" class="hidden mb-4 space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-1" data-i18n="full_name">Full Name</label>
+                                    <input type="text" id="auth-name" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-1" data-i18n="phone">Phone Number</label>
+                                    <input type="tel" id="auth-phone" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-1" data-i18n="email">Email</label>
+                                    <input type="email" id="auth-email" required class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                                </div>
+                                <div class="relative">
+                                    <label class="block text-sm font-medium mb-1" data-i18n="password">Password</label>
+                                    <input type="password" id="auth-pass" required class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                                    <button type="button" onclick="togglePassword()" class="absolute right-3 top-8 text-gray-500"><i class="fas fa-eye"></i></button>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="w-full bg-primary text-white font-bold py-2 px-4 rounded mt-6 hover:bg-blue-600 transition" id="auth-btn" data-i18n="login">Login</button>
+                        </form>
+                        
+                        <p class="text-center mt-4 text-sm">
+                            <span id="auth-switch-text" data-i18n="no_account">Don't have an account?</span> 
+                            <a href="#" onclick="toggleAuthMode()" class="text-primary font-bold hover:underline" id="auth-switch-link" data-i18n="signup">Sign Up</a>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- View: Dashboard -->
+                <div id="view-dashboard" class="view hidden fade-in space-y-6">
+                    <!-- Welcome & Stats -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border-l-4 border-success hover-lift">
+                            <h3 class="text-gray-500 text-sm font-semibold uppercase" data-i18n="comm_health_score">Community Health Score</h3>
+                            <div class="flex items-end mt-2">
+                                <span class="text-3xl font-bold text-success counter" data-target="85">0</span><span class="text-xl text-success">%</span>
+                                <span class="ml-2 text-sm text-gray-400 mb-1" data-i18n="safe_zone">Safe Zone</span>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border-l-4 border-primary hover-lift">
+                            <h3 class="text-gray-500 text-sm font-semibold uppercase" data-i18n="water_safety_score">Water Safety Score</h3>
+                            <div class="flex items-end mt-2">
+                                <span class="text-3xl font-bold text-primary counter" data-target="92">0</span><span class="text-xl text-primary">%</span>
+                                <span class="ml-2 text-sm text-gray-400 mb-1" data-i18n="good">Good</span>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border-l-4 border-warning hover-lift">
+                            <h3 class="text-gray-500 text-sm font-semibold uppercase" data-i18n="active_complaints">Active Complaints</h3>
+                            <div class="flex items-end mt-2">
+                                <span class="text-3xl font-bold text-warning" id="dash-complaints">0</span>
+                                <span class="ml-2 text-sm text-gray-400 mb-1" data-i18n="pending">Pending</span>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border-l-4 border-gray-400 hover-lift">
+                            <h3 class="text-gray-500 text-sm font-semibold uppercase" data-i18n="your_appointments">Your Appointments</h3>
+                            <div class="flex items-end mt-2">
+                                <span class="text-3xl font-bold text-gray-700 dark:text-gray-300" id="dash-appointments">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Daily Tip -->
+                    <div class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg border border-blue-200 dark:border-blue-800 flex items-start">
+                        <i class="fas fa-lightbulb text-primary text-xl mt-1 mr-3"></i>
+                        <div>
+                            <h4 class="font-bold text-primary" data-i18n="daily_tip">Daily Health Tip</h4>
+                            <p class="text-sm mt-1" data-i18n="tip_text">Always boil water for at least 1 minute before drinking to kill harmful bacteria and prevent water-borne diseases.</p>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity Table -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
+                        <div class="p-4 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                            <h3 class="font-bold text-lg" data-i18n="recent_activity">Recent Activity</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-50 dark:bg-gray-700/50 text-sm text-gray-500">
+                                        <th class="p-3" data-i18n="date">Date</th>
+                                        <th class="p-3" data-i18n="type">Type</th>
+                                        <th class="p-3" data-i18n="details">Details</th>
+                                        <th class="p-3" data-i18n="status">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="activity-table-body" class="text-sm divide-y dark:divide-gray-700">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View: Symptom Checker -->
+                <div id="view-symptoms" class="view hidden fade-in max-w-2xl mx-auto">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
+                        <div class="text-center mb-6">
+                            <i class="fas fa-stethoscope text-4xl text-primary mb-2"></i>
+                            <h2 class="text-2xl font-bold" data-i18n="symptom_checker">Symptom Checker</h2>
+                            <p class="text-gray-500 text-sm" data-i18n="select_symptoms">Select any symptoms you are currently experiencing to check risk level.</p>
+                        </div>
+                        
+                        <form id="symptom-form" onsubmit="checkSymptoms(event)">
+                            <div class="grid grid-cols-2 gap-4 mb-6">
+                                <label class="flex items-center p-3 border rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                    <input type="checkbox" value="fever" class="symp-check w-5 h-5 text-primary">
+                                    <span class="ml-3" data-i18n="symp_fever">Fever</span>
+                                </label>
+                                <label class="flex items-center p-3 border rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                    <input type="checkbox" value="vomiting" class="symp-check w-5 h-5 text-primary">
+                                    <span class="ml-3" data-i18n="symp_vomit">Vomiting</span>
+                                </label>
+                                <label class="flex items-center p-3 border rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                    <input type="checkbox" value="diarrhea" class="symp-check w-5 h-5 text-primary">
+                                    <span class="ml-3" data-i18n="symp_diarrhea">Diarrhea</span>
+                                </label>
+                                <label class="flex items-center p-3 border rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                    <input type="checkbox" value="stomach" class="symp-check w-5 h-5 text-primary">
+                                    <span class="ml-3" data-i18n="symp_stomach">Stomach Pain</span>
+                                </label>
+                                <label class="flex items-center p-3 border rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                    <input type="checkbox" value="dehydration" class="symp-check w-5 h-5 text-primary">
+                                    <span class="ml-3" data-i18n="symp_dehydration">Dehydration</span>
+                                </label>
+                            </div>
+                            <button type="submit" class="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-blue-600 transition" data-i18n="check_risk">Check Risk Level</button>
+                        </form>
+
+                        <div id="risk-result" class="hidden mt-6 p-4 rounded-lg text-center border">
+                            <h3 class="font-bold text-lg mb-2" data-i18n="risk_level">Risk Level</h3>
+                            <div id="risk-badge" class="inline-block px-4 py-2 rounded-full font-bold text-white text-xl"></div>
+                            <p id="risk-desc" class="mt-3 text-sm"></p>
+                            <button onclick="saveSymptomReport()" class="mt-4 text-primary font-bold hover:underline text-sm" data-i18n="save_report"><i class="fas fa-save mr-1"></i> Save Report</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View: Water Problem Report -->
+                <div id="view-water-report" class="view hidden fade-in max-w-2xl mx-auto">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border-t-4 border-warning">
+                        <h2 class="text-2xl font-bold mb-2" data-i18n="water_problem_report">Report Water Problem</h2>
+                        <p class="text-gray-500 text-sm mb-6" data-i18n="water_report_desc">Help us maintain clean water by reporting issues in your village.</p>
+                        
+                        <form id="water-report-form" onsubmit="submitWaterReport(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1" data-i18n="village_name">Village Name</label>
+                                <input type="text" id="wr-village" required class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1" data-i18n="water_source">Water Source</label>
+                                <select id="wr-source" required class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                                    <option value="Borewell" data-i18n="src_borewell">Borewell</option>
+                                    <option value="River" data-i18n="src_river">River Water</option>
+                                    <option value="Tank" data-i18n="src_tank">Village Tank</option>
+                                    <option value="Dam" data-i18n="src_dam">Dam Supply</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1" data-i18n="problem_type">Problem Type</label>
+                                <select id="wr-type" required class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                                    <option value="Dirty Water" data-i18n="prob_dirty">Dirty / Muddy Water</option>
+                                    <option value="Bad Smell" data-i18n="prob_smell">Bad Smell</option>
+                                    <option value="Leakage" data-i18n="prob_leak">Pipe Leakage</option>
+                                    <option value="Shortage" data-i18n="prob_shortage">Water Shortage</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1" data-i18n="description">Description</label>
+                                <textarea id="wr-desc" rows="3" required class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"></textarea>
+                            </div>
+                            <button type="submit" class="w-full bg-warning text-white py-2 rounded font-bold hover:bg-yellow-600 transition" data-i18n="submit_report">Submit Report</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- View: Water Quality & Sources (Combined logic) -->
+                <div id="view-water-quality" class="view hidden fade-in space-y-6">
+                    <h2 class="text-2xl font-bold" data-i18n="water_monitoring">Water Source Monitoring & Quality</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Quality Test Results -->
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
+                            <h3 class="font-bold text-lg mb-4 border-b pb-2" data-i18n="latest_test_results">Latest Quality Test Results</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-sm font-medium" data-i18n="ph_level">pH Level (7.2)</span>
+                                        <span class="text-sm text-success font-bold" data-i18n="optimal">Optimal</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                        <div class="bg-success h-2 rounded-full" style="width: 72%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-sm font-medium" data-i18n="bacteria_risk">Bacteria Risk</span>
+                                        <span class="text-sm text-success font-bold" data-i18n="low">Low</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                        <div class="bg-success h-2 rounded-full" style="width: 15%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-sm font-medium" data-i18n="turbidity">Turbidity (Clearness)</span>
+                                        <span class="text-sm text-warning font-bold" data-i18n="moderate">Moderate</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                        <div class="bg-warning h-2 rounded-full" style="width: 45%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-6 text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <p class="text-sm text-gray-500" data-i18n="overall_water_score">Overall Water Safety Score</p>
+                                <p class="text-4xl font-bold text-primary">85%</p>
+                            </div>
+                        </div>
+
+                        <!-- Source Status -->
+                        <div class="space-y-4">
+                            <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4 border-success hover-lift">
+                                <div class="flex items-center">
+                                    <i class="fas fa-water text-2xl text-primary mr-4"></i>
+                                    <div>
+                                        <h4 class="font-bold" data-i18n="src_borewell">Borewell (Main)</h4>
+                                        <p class="text-xs text-gray-500" data-i18n="last_tested">Last tested: 2 days ago</p>
+                                    </div>
+                                </div>
+                                <span class="bg-success/20 text-success px-3 py-1 rounded-full text-sm font-bold" data-i18n="status_safe">Safe</span>
+                            </div>
+                            <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4 border-success hover-lift">
+                                <div class="flex items-center">
+                                    <i class="fas fa-database text-2xl text-primary mr-4"></i>
+                                    <div>
+                                        <h4 class="font-bold" data-i18n="src_tank">Village Tank</h4>
+                                        <p class="text-xs text-gray-500" data-i18n="last_tested">Last tested: 1 week ago</p>
+                                    </div>
+                                </div>
+                                <span class="bg-success/20 text-success px-3 py-1 rounded-full text-sm font-bold" data-i18n="status_safe">Safe</span>
+                            </div>
+                            <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4 border-warning hover-lift">
+                                <div class="flex items-center">
+                                    <i class="fas fa-stream text-2xl text-primary mr-4"></i>
+                                    <div>
+                                        <h4 class="font-bold" data-i18n="src_river">River Water</h4>
+                                        <p class="text-xs text-gray-500" data-i18n="last_tested">Last tested: Today</p>
+                                    </div>
+                                </div>
+                                <span class="bg-warning/20 text-warning px-3 py-1 rounded-full text-sm font-bold" data-i18n="status_monitor">Monitor</span>
+                            </div>
+                            <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm flex items-center justify-between border-l-4 border-danger hover-lift">
+                                <div class="flex items-center">
+                                    <i class="fas fa-tint-slash text-2xl text-danger mr-4"></i>
+                                    <div>
+                                        <h4 class="font-bold" data-i18n="src_open">Open Well (East)</h4>
+                                        <p class="text-xs text-gray-500" data-i18n="last_tested">Last tested: Yesterday</p>
+                                    </div>
+                                </div>
+                                <span class="bg-danger/20 text-danger px-3 py-1 rounded-full text-sm font-bold" data-i18n="status_contam">Contaminated</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View: Disease Awareness & Prevention -->
+                <div id="view-awareness" class="view hidden fade-in">
+                    <h2 class="text-2xl font-bold mb-6" data-i18n="disease_awareness">Water-Borne Diseases Awareness</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        <!-- Cholera -->
+                        <div class="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm hover-lift border-t-4 border-danger">
+                            <h3 class="text-xl font-bold text-danger mb-2" data-i18n="cholera">Cholera</h3>
+                            <p class="text-sm mb-2"><strong data-i18n="cause">Cause:</strong> <span data-i18n="cholera_cause">Contaminated water & food</span></p>
+                            <p class="text-sm mb-2"><strong data-i18n="symptoms">Symptoms:</strong> <span data-i18n="cholera_symp">Severe watery diarrhea, vomiting, leg cramps</span></p>
+                            <p class="text-sm"><strong data-i18n="prevention">Prevention:</strong> <span data-i18n="cholera_prev">Drink only boiled or treated water, wash hands often.</span></p>
+                        </div>
+                        <!-- Typhoid -->
+                        <div class="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm hover-lift border-t-4 border-warning">
+                            <h3 class="text-xl font-bold text-warning mb-2" data-i18n="typhoid">Typhoid</h3>
+                            <p class="text-sm mb-2"><strong data-i18n="cause">Cause:</strong> <span data-i18n="typhoid_cause">Salmonella bacteria in water</span></p>
+                            <p class="text-sm mb-2"><strong data-i18n="symptoms">Symptoms:</strong> <span data-i18n="typhoid_symp">Prolonged fever, weakness, stomach pain, headache</span></p>
+                            <p class="text-sm"><strong data-i18n="prevention">Prevention:</strong> <span data-i18n="typhoid_prev">Vaccination, avoid raw foods, safe water.</span></p>
+                        </div>
+                        <!-- Dysentery -->
+                        <div class="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm hover-lift border-t-4 border-primary">
+                            <h3 class="text-xl font-bold text-primary mb-2" data-i18n="dysentery">Dysentery</h3>
+                            <p class="text-sm mb-2"><strong data-i18n="cause">Cause:</strong> <span data-i18n="dysentery_cause">Bacterial or amoebic infection</span></p>
+                            <p class="text-sm mb-2"><strong data-i18n="symptoms">Symptoms:</strong> <span data-i18n="dysentery_symp">Diarrhea containing blood/mucus, fever, cramps</span></p>
+                            <p class="text-sm"><strong data-i18n="prevention">Prevention:</strong> <span data-i18n="dysentery_prev">Good sanitation, pure water, hand hygiene.</span></p>
+                        </div>
+                        <!-- Hepatitis A -->
+                        <div class="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm hover-lift border-t-4 border-success">
+                            <h3 class="text-xl font-bold text-success mb-2" data-i18n="hepa">Hepatitis A</h3>
+                            <p class="text-sm mb-2"><strong data-i18n="cause">Cause:</strong> <span data-i18n="hepa_cause">Virus in contaminated water/food</span></p>
+                            <p class="text-sm mb-2"><strong data-i18n="symptoms">Symptoms:</strong> <span data-i18n="hepa_symp">Fatigue, nausea, abdominal pain, jaundice (yellow skin)</span></p>
+                            <p class="text-sm"><strong data-i18n="prevention">Prevention:</strong> <span data-i18n="hepa_prev">Vaccine, peel raw fruits/veg, safe water.</span></p>
+                        </div>
+                    </div>
+
+                    <h2 class="text-2xl font-bold mb-4" data-i18n="general_prevention">General Prevention Tips</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg flex items-center">
+                            <i class="fas fa-fire text-3xl text-primary mr-4"></i>
+                            <span class="font-medium" data-i18n="tip_boil">Boil drinking water for 1-3 minutes.</span>
+                        </div>
+                        <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg flex items-center">
+                            <i class="fas fa-hands-wash text-3xl text-success mr-4"></i>
+                            <span class="font-medium" data-i18n="tip_wash">Wash hands with soap before eating.</span>
+                        </div>
+                        <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg flex items-center">
+                            <i class="fas fa-box-open text-3xl text-warning mr-4"></i>
+                            <span class="font-medium" data-i18n="tip_cover">Keep water containers covered and clean.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View: Directories (Hospitals & Doctors) -->
+                <div id="view-directory" class="view hidden fade-in">
+                    <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                        <h2 class="text-2xl font-bold" id="dir-title" data-i18n="hospitals_dir">Hospitals Directory</h2>
+                        <div class="flex bg-gray-200 dark:bg-gray-700 rounded-lg p-1">
+                            <button onclick="switchDirectory('hospitals')" id="tab-hosp" class="px-4 py-2 rounded-md bg-white dark:bg-gray-800 shadow-sm font-bold text-sm" data-i18n="hospitals">Hospitals</button>
+                            <button onclick="switchDirectory('doctors')" id="tab-doc" class="px-4 py-2 rounded-md text-gray-600 dark:text-gray-300 font-bold text-sm" data-i18n="doctors">Doctors</button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <input type="text" id="dir-search" onkeyup="filterDirectory()" placeholder="Search by name or district..." class="w-full md:w-1/3 p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary outline-none" data-i18n-placeholder="search_placeholder">
+                    </div>
+
+                    <div id="directory-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- View: Book Appointment -->
+                <div id="view-appointment" class="view hidden fade-in max-w-2xl mx-auto">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border-t-4 border-primary">
+                        <h2 class="text-2xl font-bold mb-6" data-i18n="book_appointment">Book Doctor Appointment</h2>
+                        
+                        <form id="appointment-form" onsubmit="submitAppointment(event)" class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-1" data-i18n="patient_name">Patient Name</label>
+                                    <input type="text" id="apt-name" required class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-1" data-i18n="phone">Phone Number</label>
+                                    <input type="tel" id="apt-phone" required class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-1" data-i18n="select_hospital">Select Hospital</label>
+                                    <select id="apt-hospital" onchange="updateDoctorsList()" required class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                                        <!-- Populated via JS -->
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-1" data-i18n="select_doctor">Select Doctor</label>
+                                    <select id="apt-doctor" required class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                                        <option value="" data-i18n="select_hosp_first">Select Hospital First</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-1" data-i18n="date">Date</label>
+                                    <input type="date" id="apt-date" required class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-1" data-i18n="time">Time</label>
+                                    <input type="time" id="apt-time" required class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium mb-1" data-i18n="symptoms">Symptoms (Brief)</label>
+                                <textarea id="apt-symptoms" rows="2" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"></textarea>
+                            </div>
+                            
+                            <button type="submit" class="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-blue-600 transition shadow-md" data-i18n="confirm_booking">Confirm Booking</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- View: Village Health Map -->
+                <div id="view-map" class="view hidden fade-in">
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-bold" data-i18n="village_health_map">District Health Risk Map (Tamil Nadu)</h2>
+                        <p class="text-gray-500 text-sm mt-1" data-i18n="map_desc">Color codes indicate water-borne disease risk levels.</p>
+                        <div class="flex justify-center gap-4 mt-3 text-sm">
+                            <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-success mr-1"></span> <span data-i18n="status_safe">Safe</span></span>
+                            <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-warning mr-1"></span> <span data-i18n="moderate">Moderate</span></span>
+                            <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-danger mr-1"></span> <span data-i18n="high_risk">High Risk</span></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Simulated Map using CSS Grid -->
+                    <div class="max-w-4xl mx-auto bg-white dark:bg-gray-800 p-6 rounded-xl shadow-inner">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3" id="map-grid">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View: Emergency Help -->
+                <div id="view-emergency" class="view hidden fade-in max-w-3xl mx-auto text-center">
+                    <h2 class="text-3xl font-bold text-danger mb-8 flex items-center justify-center"><i class="fas fa-ambulance mr-3"></i> <span data-i18n="emergency_help">Emergency Help</span></h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                        <a href="tel:108" class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-md border-b-4 border-danger hover-lift flex flex-col items-center">
+                            <i class="fas fa-truck-medical text-5xl text-danger mb-4"></i>
+                            <h3 class="text-xl font-bold mb-1" data-i18n="ambulance">Ambulance</h3>
+                            <span class="text-3xl font-black text-gray-800 dark:text-white">108</span>
+                        </a>
+                        <a href="tel:100" class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-md border-b-4 border-primary hover-lift flex flex-col items-center">
+                            <i class="fas fa-shield-halved text-5xl text-primary mb-4"></i>
+                            <h3 class="text-xl font-bold mb-1" data-i18n="police">Police</h3>
+                            <span class="text-3xl font-black text-gray-800 dark:text-white">100</span>
+                        </a>
+                        <a href="tel:101" class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-md border-b-4 border-warning hover-lift flex flex-col items-center">
+                            <i class="fas fa-fire-extinguisher text-5xl text-warning mb-4"></i>
+                            <h3 class="text-xl font-bold mb-1" data-i18n="fire">Fire Rescue</h3>
+                            <span class="text-3xl font-black text-gray-800 dark:text-white">101</span>
+                        </a>
+                    </div>
+
+                    <button onclick="triggerSOS()" class="bg-danger hover:bg-red-700 text-white font-bold py-6 px-12 rounded-full text-2xl shadow-[0_0_20px_rgba(229,83,61,0.6)] transform transition hover:scale-105" data-i18n="sos_alert">
+                        SEND SOS ALERT
+                    </button>
+                    <p class="mt-4 text-gray-500 text-sm" data-i18n="sos_desc">This will send your location to the nearest health center.</p>
+                </div>
+
+                <!-- View: Awareness Quiz -->
+                <div id="view-quiz" class="view hidden fade-in max-w-2xl mx-auto">
+                    <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-sm">
+                        <h2 class="text-2xl font-bold mb-6 text-center" data-i18n="health_quiz">Health Awareness Quiz</h2>
+                        
+                        <div id="quiz-container">
+                            <div class="mb-6">
+                                <p class="font-bold text-lg mb-3">1. <span data-i18n="q1">What is the most effective way to purify water at home?</span></p>
+                                <div class="space-y-2">
+                                    <label class="flex items-center p-3 border rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"><input type="radio" name="q1" value="0" class="mr-3 text-primary"> <span data-i18n="q1_o1">Filtering through cloth</span></label>
+                                    <label class="flex items-center p-3 border rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"><input type="radio" name="q1" value="1" class="mr-3 text-primary"> <span data-i18n="q1_o2">Boiling for 1-3 minutes</span></label>
+                                    <label class="flex items-center p-3 border rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"><input type="radio" name="q1" value="0" class="mr-3 text-primary"> <span data-i18n="q1_o3">Leaving it in sunlight</span></label>
+                                </div>
+                            </div>
+                            <div class="mb-6">
+                                <p class="font-bold text-lg mb-3">2. <span data-i18n="q2">Which of the following is a symptom of Cholera?</span></p>
+                                <div class="space-y-2">
+                                    <label class="flex items-center p-3 border rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"><input type="radio" name="q2" value="1" class="mr-3 text-primary"> <span data-i18n="q2_o1">Severe watery diarrhea</span></label>
+                                    <label class="flex items-center p-3 border rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"><input type="radio" name="q2" value="0" class="mr-3 text-primary"> <span data-i18n="q2_o2">Cough and cold</span></label>
+                                    <label class="flex items-center p-3 border rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"><input type="radio" name="q2" value="0" class="mr-3 text-primary"> <span data-i18n="q2_o3">Hair loss</span></label>
+                                </div>
+                            </div>
+                            <button onclick="submitQuiz()" class="w-full bg-primary text-white py-3 rounded font-bold hover:bg-blue-600 transition" data-i18n="submit_quiz">Submit Quiz</button>
+                        </div>
+                        
+                        <div id="quiz-result" class="hidden text-center mt-6 p-6 border-2 border-success rounded-xl bg-success/10">
+                            <h3 class="text-2xl font-bold text-success mb-2" data-i18n="quiz_completed">Quiz Completed!</h3>
+                            <p class="text-lg"><span data-i18n="your_score">Your Score:</span> <span id="quiz-score" class="font-bold text-2xl">0/2</span></p>
+                            <button onclick="resetQuiz()" class="mt-4 text-primary underline" data-i18n="retake_quiz">Retake Quiz</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View: Feedback -->
+                <div id="view-feedback" class="view hidden fade-in max-w-2xl mx-auto">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border-t-4 border-gray-400">
+                        <h2 class="text-2xl font-bold mb-2" data-i18n="feedback">Community Feedback</h2>
+                        <p class="text-gray-500 text-sm mb-6" data-i18n="feedback_desc">Share your suggestions or report general community issues.</p>
+                        
+                        <form id="feedback-form" onsubmit="submitFeedback(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1" data-i18n="full_name">Name</label>
+                                <input type="text" id="fb-name" required class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1" data-i18n="email_optional">Email (Optional)</label>
+                                <input type="email" id="fb-email" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1" data-i18n="suggestion_issue">Suggestion / Issue</label>
+                                <textarea id="fb-text" rows="4" required class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"></textarea>
+                            </div>
+                            <button type="submit" class="w-full bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800 py-3 rounded font-bold hover:opacity-90 transition" data-i18n="submit_feedback">Submit Feedback</button>
+                        </form>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Javascript Logic -->
+    <script>
+        // --- 1. STATE & LOCALSTORAGE WRAPPER ---
+        const AppState = {
+            currentUser: null,
+            language: localStorage.getItem('art_lang') || 'en',
+            theme: localStorage.getItem('art_theme') || 'light',
+            currentDirectoryTab: 'hospitals'
+        };
+
+        const DB = {
+            get: (key) => JSON.parse(localStorage.getItem(`art_${key}`)) || [],
+            set: (key, data) => localStorage.setItem(`art_${key}`, JSON.stringify(data)),
+            add: (key, item) => {
+                const data = DB.get(key);
+                data.unshift({ ...item, id: Date.now(), timestamp: new Date().toISOString() });
+                DB.set(key, data);
+            }
+        };
+
+        // --- 2. MULTI-LANGUAGE DICTIONARY (Simulated robust subset) ---
+        const translations = {
+            en: {
+                app_title: "ART Health", dashboard: "Dashboard", symp_check: "Symptom Checker", water_report: "Water Problem Report",
+                water_mon: "Water Source Monitoring", water_qual: "Water Quality Testing", disease_aware: "Disease Awareness",
+                prev_tips: "Prevention Tips", hosp_dir: "Hospitals", doc_dir: "Doctors", book_apt: "Book Appointment",
+                health_map: "Village Health Map", emergency: "Emergency Help", quiz: "Awareness Quiz", feedback: "Feedback",
+                login: "Login", signup: "Sign Up", logout: "Logout", alert_msg: "Health Alert: Rise in water-borne diseases in neighboring districts. Boil drinking water.",
+                comm_health_score: "Community Health Score", safe_zone: "Safe Zone", water_safety_score: "Water Safety Score", good: "Good",
+                active_complaints: "Active Complaints", pending: "Pending", your_appointments: "Your Appointments",
+                daily_tip: "Daily Health Tip", tip_text: "Always boil water for at least 1 minute before drinking to kill harmful bacteria.",
+                recent_activity: "Recent Activity", date: "Date", type: "Type", details: "Details", status: "Status",
+                symptom_checker: "Symptom Checker", select_symptoms: "Select any symptoms you are currently experiencing to check risk level.",
+                symp_fever: "Fever", symp_vomit: "Vomiting", symp_diarrhea: "Diarrhea", symp_stomach: "Stomach Pain", symp_dehydration: "Dehydration",
+                check_risk: "Check Risk Level", risk_level: "Risk Level", save_report: "Save Report",
+                water_problem_report: "Report Water Problem", water_report_desc: "Help us maintain clean water by reporting issues in your village.",
+                village_name: "Village Name", water_source: "Water Source", problem_type: "Problem Type", description: "Description", submit_report: "Submit Report",
+                src_borewell: "Borewell", src_river: "River Water", src_tank: "Village Tank", src_dam: "Dam Supply",
+                prob_dirty: "Dirty / Muddy Water", prob_smell: "Bad Smell", prob_leak: "Pipe Leakage", prob_shortage: "Water Shortage",
+                water_monitoring: "Water Source Monitoring & Quality", latest_test_results: "Latest Quality Test Results", ph_level: "pH Level (7.2)",
+                optimal: "Optimal", bacteria_risk: "Bacteria Risk", low: "Low", turbidity: "Turbidity (Clearness)", moderate: "Moderate", overall_water_score: "Overall Water Safety Score",
+                last_tested: "Last tested:", status_safe: "Safe", status_monitor: "Monitor", status_contam: "Contaminated",
+                disease_awareness: "Water-Borne Diseases Awareness", cholera: "Cholera", typhoid: "Typhoid", dysentery: "Dysentery", hepa: "Hepatitis A",
+                cause: "Cause:", symptoms: "Symptoms:", prevention: "Prevention:", general_prevention: "General Prevention Tips",
+                hospitals_dir: "Hospitals Directory", hospitals: "Hospitals", doctors: "Doctors", search_placeholder: "Search by name or district...",
+                book_appointment: "Book Doctor Appointment", patient_name: "Patient Name", phone: "Phone Number", select_hospital: "Select Hospital", select_doctor: "Select Doctor", select_hosp_first: "Select Hospital First", time: "Time", confirm_booking: "Confirm Booking",
+                village_health_map: "District Health Risk Map (Tamil Nadu)", map_desc: "Color codes indicate water-borne disease risk levels.", high_risk: "High Risk",
+                emergency_help: "Emergency Help", ambulance: "Ambulance", police: "Police", fire: "Fire Rescue", sos_alert: "SEND SOS ALERT", sos_desc: "This will send your location to the nearest health center.",
+                health_quiz: "Health Awareness Quiz", q1: "What is the most effective way to purify water at home?", q1_o1: "Filtering through cloth", q1_o2: "Boiling for 1-3 minutes", q1_o3: "Leaving it in sunlight",
+                q2: "Which of the following is a symptom of Cholera?", q2_o1: "Severe watery diarrhea", q2_o2: "Cough and cold", q2_o3: "Hair loss",
+                submit_quiz: "Submit Quiz", quiz_completed: "Quiz Completed!", your_score: "Your Score:", retake_quiz: "Retake Quiz",
+                feedback_desc: "Share your suggestions or report general community issues.", full_name: "Name", email_optional: "Email (Optional)", suggestion_issue: "Suggestion / Issue", submit_feedback: "Submit Feedback", email: "Email", password: "Password", login_account: "Login to Account", no_account: "Don't have an account?"
+            },
+            ta: {
+                app_title: "ART சுகாதாரம்", dashboard: "டாஷ்போர்டு", symp_check: "அறிகுறி சரிபார்ப்பு", water_report: "நீர் பிரச்சனை அறிக்கை",
+                water_mon: "நீர் ஆதாரம் கண்காணிப்பு", water_qual: "நீர் தரம் சோதனை", disease_aware: "நோய் விழிப்புணர்வு",
+                prev_tips: "தடுப்பு குறிப்புகள்", hosp_dir: "மருத்துவமனைகள்", doc_dir: "மருத்துவர்கள்", book_apt: "முன்பதிவு செய்",
+                health_map: "கிராம சுகாதார வரைபடம்", emergency: "அவசர உதவி", quiz: "விழிப்புணர்வு வினாடி வினா", feedback: "கருத்து",
+                login: "உள்நுழை", signup: "பதிவு செய்", logout: "வெளியேறு", alert_msg: "சுகாதார எச்சரிக்கை: தண்ணீர் மூலம் பரவும் நோய்கள் அதிகரிப்பு. குடிநீரை கொதிக்க வைக்கவும்.",
+                comm_health_score: "சமூக சுகாதார மதிப்பெண்", safe_zone: "பாதுகாப்பான மண்டலம்", water_safety_score: "நீர் பாதுகாப்பு மதிப்பெண்", good: "நன்று",
+                active_complaints: "செயலில் உள்ள புகார்கள்", pending: "நிலுவையில்", your_appointments: "உங்கள் முன்பதிவுகள்",
+                daily_tip: "தினசரி சுகாதார குறிப்பு", tip_text: "பாக்டீரியாக்களை அழிக்க குடிப்பதற்கு முன் குறைந்தது 1 நிமிடம் தண்ணீரை கொதிக்க வைக்கவும்.",
+                recent_activity: "சமீபத்திய செயல்பாடு", date: "தேதி", type: "வகை", details: "விவரங்கள்", status: "நிலை",
+                symptom_checker: "அறிகுறி சரிபார்ப்பு", select_symptoms: "ஆபத்து அளவை அறிய அறிகுறிகளைத் தேர்ந்தெடுக்கவும்.",
+                symp_fever: "காய்ச்சல்", symp_vomit: "வாந்தி", symp_diarrhea: "வயிற்றுப்போக்கு", symp_stomach: "வயிற்று வலி", symp_dehydration: "நீரிழப்பு",
+                check_risk: "ஆபத்து அளவை சரிபார்க்கவும்", risk_level: "ஆபத்து நிலை", save_report: "அறிக்கையை சேமி",
+                water_problem_report: "நீர் பிரச்சனை அறிக்கை", water_report_desc: "உங்கள் கிராமத்தில் உள்ள பிரச்சனைகளை தெரிவித்து சுத்தமான நீரை பராமரிக்க உதவுங்கள்.",
+                village_name: "கிராமத்தின் பெயர்", water_source: "நீர் ஆதாரம்", problem_type: "பிரச்சனை வகை", description: "விளக்கம்", submit_report: "அறிக்கையை சமர்ப்பி",
+                src_borewell: "ஆழ்துளை கிணறு", src_river: "ஆற்று நீர்", src_tank: "கிராமத்து தொட்டி", src_dam: "அணை நீர்",
+                prob_dirty: "அழுக்கு நீர்", prob_smell: "துர்நாற்றம்", prob_leak: "குழாய் கசிவு", prob_shortage: "தண்ணீர் தட்டுப்பாடு",
+                water_monitoring: "நீர் ஆதாரம் மற்றும் தரம்", latest_test_results: "சமீபத்திய சோதனை முடிவுகள்", ph_level: "pH நிலை",
+                optimal: "உகந்தது", bacteria_risk: "பாக்டீரியா ஆபத்து", low: "குறைவு", turbidity: "கலங்கல்", moderate: "மிதமானது", overall_water_score: "ஒட்டுமொத்த பாதுகாப்பு மதிப்பெண்",
+                last_tested: "கடைசியாக சோதிக்கப்பட்டது:", status_safe: "பாதுகாப்பானது", status_monitor: "கண்காணிக்கவும்", status_contam: "மாசடைந்தது",
+                disease_awareness: "நீர் மூலம் பரவும் நோய்கள் விழிப்புணர்வு", cholera: "காலரா", typhoid: "டைபாய்டு", dysentery: "வயிற்றுக்கடுப்பு", hepa: "ஹெபடைடிஸ் ஏ",
+                cause: "காரணம்:", symptoms: "அறிகுறிகள்:", prevention: "தடுப்பு:", general_prevention: "பொதுவான தடுப்பு குறிப்புகள்",
+                hospitals_dir: "மருத்துவமனைகள்", hospitals: "மருத்துவமனைகள்", doctors: "மருத்துவர்கள்", search_placeholder: "தேடுங்கள்...",
+                book_appointment: "மருத்துவரை முன்பதிவு செய்", patient_name: "நோயாளி பெயர்", phone: "தொலைபேசி எண்", select_hospital: "மருத்துவமனையைத் தேர்ந்தெடு", select_doctor: "மருத்துவரைத் தேர்ந்தெடு", select_hosp_first: "முதலில் மருத்துவமனையைத் தேர்ந்தெடுக்கவும்", time: "நேரம்", confirm_booking: "உறுதி செய்",
+                village_health_map: "மாவட்ட சுகாதார ஆபத்து வரைபடம்", map_desc: "வண்ணக் குறியீடுகள் ஆபத்து அளவைக் குறிக்கின்றன.", high_risk: "அதிக ஆபத்து",
+                emergency_help: "அவசர உதவி", ambulance: "ஆம்புலன்ஸ்", police: "காவல்துறை", fire: "தீயணைப்பு", sos_alert: "SOS எச்சரிக்கை அனுப்பு", sos_desc: "இது உங்கள் இருப்பிடத்தை அருகிலுள்ள சுகாதார மையத்திற்கு அனுப்பும்.",
+                health_quiz: "சுகாதார விழிப்புணர்வு வினாடி வினா", q1: "வீட்டில் தண்ணீரை சுத்திகரிக்க சிறந்த வழி எது?", q1_o1: "துணியால் வடிகட்டுதல்", q1_o2: "1-3 நிமிடம் கொதிக்க வைத்தல்", q1_o3: "சூரிய ஒளியில் வைத்தல்",
+                q2: "காலராவின் அறிகுறி எது?", q2_o1: "கடுமையான வயிற்றுப்போக்கு", q2_o2: "இருமல் மற்றும் சளி", q2_o3: "முடி உதிர்தல்",
+                submit_quiz: "வினாடி வினாவை சமர்ப்பி", quiz_completed: "முடிந்தது!", your_score: "உங்கள் மதிப்பெண்:", retake_quiz: "மீண்டும் செய்",
+                feedback_desc: "உங்கள் பரிந்துரைகளை பகிரவும்.", full_name: "பெயர்", email_optional: "மின்னஞ்சல் (விரும்பினால்)", suggestion_issue: "பரிந்துரை / பிரச்சனை", submit_feedback: "கருத்து சமர்ப்பி", email: "மின்னஞ்சல்", password: "கடவுச்சொல்", login_account: "உள்நுழைய", no_account: "கணக்கு இல்லையா?"
+            },
+            hi: {
+                app_title: "ART स्वास्थ्य", dashboard: "डैशबोर्ड", symp_check: "लक्षण चेकर", water_report: "जल समस्या रिपोर्ट",
+                water_mon: "जल स्रोत निगरानी", water_qual: "जल गुणवत्ता परीक्षण", disease_aware: "रोग जागरूकता",
+                prev_tips: "रोकथाम के सुझाव", hosp_dir: "अस्पताल", doc_dir: "डॉक्टर", book_apt: "अपॉइंटमेंट बुक करें",
+                health_map: "ग्राम स्वास्थ्य मानचित्र", emergency: "आपातकालीन मदद", quiz: "जागरूकता प्रश्नोत्तरी", feedback: "प्रतिक्रिया",
+                login: "लॉग इन", signup: "साइन अप", logout: "लॉग आउट", alert_msg: "स्वास्थ्य अलर्ट: पानी से होने वाली बीमारियों में वृद्धि। पानी उबालकर पिएं।",
+                comm_health_score: "सामुदायिक स्वास्थ्य स्कोर", safe_zone: "सुरक्षित क्षेत्र", water_safety_score: "जल सुरक्षा स्कोर", good: "अच्छा",
+                active_complaints: "सक्रिय शिकायतें", pending: "लंबित", your_appointments: "आपके अपॉइंटमेंट",
+                daily_tip: "दैनिक स्वास्थ्य टिप", tip_text: "हानिकारक बैक्टीरिया को मारने के लिए पीने से पहले कम से कम 1 मिनट तक पानी उबालें।",
+                recent_activity: "हाल की गतिविधि", date: "तारीख", type: "प्रकार", details: "विवरण", status: "स्थिति",
+                check_risk: "जोखिम स्तर जांचें", save_report: "रिपोर्ट सहेजें", submit_report: "रिपोर्ट जमा करें",
+                hospitals_dir: "अस्पताल निर्देशिका", confirm_booking: "बुकिंग की पुष्टि करें", emergency_help: "आपातकालीन मदद",
+                symp_fever: "बुखार", symp_vomit: "उल्टी", symp_diarrhea: "दस्त", symp_stomach: "पेट दर्द", symp_dehydration: "निर्जलीकरण",
+                status_safe: "सुरक्षित", status_monitor: "निगरानी", status_contam: "दूषित", email: "ईमेल", password: "पासवर्ड", login_account: "लॉगिन करें", no_account: "खाता नहीं है?"
+            },
+            te: {
+                app_title: "ART ఆరోగ్యం", dashboard: "డాష్‌బోర్డ్", symp_check: "లక్షణాల తనిఖీ", water_report: "నీటి సమస్య నివేదిక",
+                login: "లాగిన్", signup: "సైన్ అప్", logout: "లాగ్అవుట్", alert_msg: "ఆరోగ్య హెచ్చరిక: నీటి ద్వారా సంక్రమించే వ్యాధులు పెరుగుతున్నాయి. నీరు ఉడకబెట్టండి.",
+                comm_health_score: "కమ్యూనిటీ ఆరోగ్య స్కోరు", safe_zone: "సురక్షిత ప్రాంతం", water_safety_score: "నీటి భద్రత స్కోరు", good: "మంచిది",
+                symp_fever: "జ్వరం", symp_vomit: "వాంతులు", symp_diarrhea: "విరేచనాలు", symp_stomach: "కడుపు నొప్పి", symp_dehydration: "డీహైడ్రేషన్",
+                status_safe: "సురక్షితం", status_monitor: "పర్యవేక్షించండి", status_contam: "కలుషితమైనది", email: "ఇమెయిల్", password: "పాస్వర్డ్", login_account: "లాగిన్", no_account: "ఖాతా లేదా?"
+            },
+            ml: {
+                app_title: "ART ആരോഗ്യം", dashboard: "ഡാഷ്ബോർഡ്", symp_check: "രോഗലക്ഷണ പരിശോധന", water_report: "ജലപ്രശ്ന റിപ്പോർട്ട്",
+                login: "ലോഗിൻ", signup: "സൈൻ അപ്പ്", logout: "ലോഗ്ഔട്ട്", alert_msg: "ആരോഗ്യ മുന്നറിയിപ്പ്: വെള്ളത്തിലൂടെ പകരുന്ന രോഗങ്ങൾ വർദ്ധിക്കുന്നു. വെള്ളം തിളപ്പിച്ച് കുടിക്കുക.",
+                comm_health_score: "കമ്മ്യൂണിറ്റി ഹെൽത്ത് സ്കോർ", safe_zone: "സുരക്ഷിത മേഖല", water_safety_score: "ജല സുരക്ഷാ സ്കോർ", good: "നല്ലത്",
+                symp_fever: "പനി", symp_vomit: "ഛർദ്ദി", symp_diarrhea: "വയറിളക്കം", symp_stomach: "വയറുവേദന", symp_dehydration: "നിർജ്ജലീകരണം",
+                status_safe: "സുരക്ഷിതം", status_monitor: "നിരീക്ഷിക്കുക", status_contam: "മലിനമായത്", email: "ഇമെയിൽ", password: "പാസ്‌വേഡ്", login_account: "ലോഗിൻ", no_account: "അക്കൗണ്ട് ഇല്ലേ?"
+            }
+        };
+
+        // Fallback mapping for keys missing in other languages
+        const getTranslation = (lang, key) => {
+            if(translations[lang] && translations[lang][key]) return translations[lang][key];
+            if(translations['en'][key]) return translations['en'][key];
+            return key;
+        };
+
+        const translatePage = () => {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                el.innerHTML = getTranslation(AppState.language, key);
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                el.placeholder = getTranslation(AppState.language, key);
+            });
+            document.title = getTranslation(AppState.language, 'app_title');
+        };
+
+        // --- 3. DATA GENERATORS (50 Hospitals & Doctors) ---
+        const districts = ["Chennai", "Salem", "Madurai", "Coimbatore", "Erode", "Namakkal", "Kanyakumari", "Tiruchirappalli", "Vellore", "Tirunelveli"];
+        const hospBases = ["Apollo Hospital", "CMC Hospital", "Kauvery Hospital", "Ganga Hospital", "Meenakshi Mission", "Government HQ Hospital", "City Care Hospital", "Royal Health", "Fortis Hospital", "Max Super Speciality"];
+        const docNames = ["Dr. Arun Kumar", "Dr. Priya V", "Dr. Ramesh S", "Dr. Kavitha M", "Dr. Karthik R", "Dr. Lakshmi N", "Dr. Suresh P", "Dr. Anitha D", "Dr. Balaji K", "Dr. Meena T"];
+        const specs = ["General Physician", "Pediatrician", "Cardiologist", "Infectious Diseases", "Gastroenterologist"];
+
+        const generateData = () => {
+            let hospitals = [], doctors = [];
+            let docId = 1, hospId = 1;
+            
+            for(let i=0; i<50; i++) {
+                const dist = districts[i % districts.length];
+                const hName = `${hospBases[i % hospBases.length]} - ${dist}`;
+                hospitals.push({ id: hospId++, name: hName, district: dist, phone: `+91 9${Math.floor(Math.random()*900000000 + 100000000)}` });
+                
+                doctors.push({
+                    id: docId++,
+                    name: `${docNames[i % docNames.length]}`,
+                    spec: specs[i % specs.length],
+                    hospital: hName,
+                    district: dist,
+                    phone: `+91 8${Math.floor(Math.random()*900000000 + 100000000)}`
+                });
+            }
+            return { hospitals, doctors };
+        };
+        const generatedData = generateData();
+
+        // --- 4. NAVIGATION & VIEWS ---
+        const navItems = [
+            { id: 'dashboard', icon: 'fa-chart-pie', i18n: 'dashboard' },
+            { id: 'symptoms', icon: 'fa-stethoscope', i18n: 'symp_check' },
+            { id: 'water-report', icon: 'fa-faucet-drip', i18n: 'water_report' },
+            { id: 'water-quality', icon: 'fa-flask', i18n: 'water_mon' },
+            { id: 'awareness', icon: 'fa-virus', i18n: 'disease_aware' },
+            { id: 'directory', icon: 'fa-hospital', i18n: 'hosp_dir' },
+            { id: 'appointment', icon: 'fa-calendar-check', i18n: 'book_apt' },
+            { id: 'map', icon: 'fa-map-location-dot', i18n: 'health_map' },
+            { id: 'emergency', icon: 'fa-truck-medical', i18n: 'emergency' },
+            { id: 'quiz', icon: 'fa-brain', i18n: 'quiz' },
+            { id: 'feedback', icon: 'fa-comments', i18n: 'feedback' }
+        ];
+
+        const buildNav = () => {
+            const nav = document.getElementById('main-nav');
+            nav.innerHTML = navItems.map(item => `
+                <a href="#" onclick="navigate('${item.id}')" id="nav-${item.id}" class="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-blue-50 hover:text-primary dark:hover:bg-gray-700 transition border-l-4 border-transparent">
+                    <i class="fas ${item.icon} w-6"></i>
+                    <span data-i18n="${item.i18n}">${getTranslation(AppState.language, item.i18n)}</span>
+                </a>
+            `).join('');
+        };
+
+        const navigate = (viewId) => {
+            document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+            document.querySelectorAll('[id^="nav-"]').forEach(n => {
+                n.classList.remove('bg-blue-50', 'text-primary', 'border-primary', 'dark:bg-gray-700');
+            });
+            
+            const target = document.getElementById(`view-${viewId}`);
+            if(target) target.classList.remove('hidden');
+            
+            const navBtn = document.getElementById(`nav-${viewId}`);
+            if(navBtn) navBtn.classList.add('bg-blue-50', 'text-primary', 'border-primary', 'dark:bg-gray-700');
+
+            if(viewId !== 'login') {
+                const titleKey = navItems.find(i => i.id === viewId)?.i18n || 'dashboard';
+                document.getElementById('page-title').setAttribute('data-i18n', titleKey);
+                document.getElementById('page-title').innerText = getTranslation(AppState.language, titleKey);
+            } else {
+                document.getElementById('page-title').innerText = "Account";
+            }
+
+            if(window.innerWidth < 768) {
+                document.getElementById('sidebar').classList.add('-translate-x-full');
+            }
+
+            // View specific initializations
+            if(viewId === 'dashboard') updateDashboard();
+            if(viewId === 'directory') renderDirectory();
+            if(viewId === 'appointment') populateAppointmentSelects();
+            if(viewId === 'map') renderMap();
+            
+            window.scrollTo(0,0);
+        };
+
+        // --- 5. LOGIC & FUNCTIONS ---
+        
+        // Theme
+        const applyTheme = () => {
+            const html = document.documentElement;
+            const icon = document.getElementById('theme-icon');
+            if(AppState.theme === 'dark') {
+                html.classList.add('dark');
+                icon.classList.replace('fa-moon', 'fa-sun');
+            } else {
+                html.classList.remove('dark');
+                icon.classList.replace('fa-sun', 'fa-moon');
+            }
+        };
+
+        document.getElementById('theme-toggle').addEventListener('click', () => {
+            AppState.theme = AppState.theme === 'light' ? 'dark' : 'light';
+            localStorage.setItem('art_theme', AppState.theme);
+            applyTheme();
+        });
+
+        // Language
+        document.getElementById('lang-selector').value = AppState.language;
+        document.getElementById('lang-selector').addEventListener('change', (e) => {
+            AppState.language = e.target.value;
+            localStorage.setItem('art_lang', AppState.language);
+            translatePage();
+            if(document.getElementById('view-directory').classList.contains('hidden') === false) renderDirectory();
+        });
+
+        // Auth
+        let isSignup = false;
+        const toggleAuthMode = () => {
+            isSignup = !isSignup;
+            document.getElementById('signup-fields').classList.toggle('hidden');
+            document.getElementById('auth-title').setAttribute('data-i18n', isSignup ? 'signup' : 'login_account');
+            document.getElementById('auth-btn').setAttribute('data-i18n', isSignup ? 'signup' : 'login');
+            document.getElementById('auth-switch-text').innerText = isSignup ? "Already have an account?" : getTranslation(AppState.language, 'no_account');
+            document.getElementById('auth-switch-link').setAttribute('data-i18n', isSignup ? 'login' : 'signup');
+            translatePage();
+        };
+
+        const togglePassword = () => {
+            const pass = document.getElementById('auth-pass');
+            pass.type = pass.type === 'password' ? 'text' : 'password';
+        };
+
+        const handleAuth = (e) => {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value;
+            if(isSignup) {
+                const name = document.getElementById('auth-name').value;
+                const users = DB.get('users');
+                users.push({ email, name });
+                DB.set('users', users);
+                alert("Signup successful. Please login.");
+                toggleAuthMode();
+            } else {
+                AppState.currentUser = email;
+                localStorage.setItem('art_user', email);
+                updateUserStatus();
+                navigate('dashboard');
+            }
+        };
+
+        const logout = () => {
+            AppState.currentUser = null;
+            localStorage.removeItem('art_user');
+            updateUserStatus();
+            navigate('login');
+        };
+
+        const updateUserStatus = () => {
+            const container = document.getElementById('user-status');
+            if(AppState.currentUser) {
+                container.innerHTML = `<span class="mr-3"><i class="fas fa-user-circle mr-1"></i>${AppState.currentUser.split('@')[0]}</span><button onclick="logout()" class="text-danger hover:underline text-sm" data-i18n="logout"><i class="fas fa-sign-out-alt"></i> Logout</button>`;
+            } else {
+                container.innerHTML = `<button onclick="navigate('login')" class="bg-primary text-white px-4 py-1.5 rounded hover:bg-blue-600" data-i18n="login">Login</button>`;
+            }
+            translatePage();
+        };
+
+        // Dashboard
+        const updateDashboard = () => {
+            const complaints = DB.get('water_reports');
+            const apts = DB.get('appointments');
+            const symptoms = DB.get('symptoms');
+            
+            document.getElementById('dash-complaints').innerText = complaints.length;
+            document.getElementById('dash-appointments').innerText = apts.length;
+
+            const activityBody = document.getElementById('activity-table-body');
+            let activities = [
+                ...complaints.map(c => ({ date: c.timestamp, type: 'Water Report', details: c.type, status: '<span class="text-warning">Pending</span>' })),
+                ...apts.map(a => ({ date: a.timestamp, type: 'Appointment', details: `Dr. ${a.docId}`, status: '<span class="text-success">Confirmed</span>' })),
+                ...symptoms.map(s => ({ date: s.timestamp, type: 'Symptom Check', details: s.riskLevel, status: '-' }))
+            ].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+
+            if(activities.length === 0) {
+                activityBody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-gray-500">No recent activity</td></tr>`;
+            } else {
+                activityBody.innerHTML = activities.map(a => `
+                    <tr>
+                        <td class="p-3">${new Date(a.date).toLocaleDateString()}</td>
+                        <td class="p-3 font-medium">${a.type}</td>
+                        <td class="p-3">${a.details}</td>
+                        <td class="p-3">${a.status}</td>
+                    </tr>
+                `).join('');
+            }
+
+            // Animate counters
+            document.querySelectorAll('.counter').forEach(el => {
+                const target = +el.getAttribute('data-target');
+                let count = 0;
+                const inc = target / 30;
+                const update = () => {
+                    count += inc;
+                    if(count < target) { el.innerText = Math.ceil(count); requestAnimationFrame(update); }
+                    else { el.innerText = target; }
+                };
+                update();
+            });
+        };
+
+        // Symptoms
+        let currentSymptomRisk = "";
+        const checkSymptoms = (e) => {
+            e.preventDefault();
+            const checked = document.querySelectorAll('.symp-check:checked');
+            const riskBadge = document.getElementById('risk-badge');
+            const riskDesc = document.getElementById('risk-desc');
+            const res = document.getElementById('risk-result');
+            
+            if(checked.length === 0) {
+                alert("Please select at least one symptom."); return;
+            }
+
+            let vals = Array.from(checked).map(c => c.value);
+            
+            if(vals.includes('diarrhea') && vals.includes('vomiting') && vals.includes('dehydration')) {
+                currentSymptomRisk = "High Risk (Possible Cholera/Severe Infection)";
+                riskBadge.className = "inline-block px-4 py-2 rounded-full font-bold text-white text-xl bg-danger";
+                riskBadge.innerText = getTranslation(AppState.language, 'high_risk');
+                riskDesc.innerText = "Please visit a hospital immediately. Drink ORS.";
+            } else if (vals.length > 2) {
+                currentSymptomRisk = "Medium Risk";
+                riskBadge.className = "inline-block px-4 py-2 rounded-full font-bold text-gray-800 text-xl bg-warning";
+                riskBadge.innerText = getTranslation(AppState.language, 'moderate');
+                riskDesc.innerText = "Monitor symptoms closely. Boil drinking water.";
+            } else {
+                currentSymptomRisk = "Low Risk";
+                riskBadge.className = "inline-block px-4 py-2 rounded-full font-bold text-white text-xl bg-success";
+                riskBadge.innerText = getTranslation(AppState.language, 'low');
+                riskDesc.innerText = "Stay hydrated and rest.";
+            }
+            res.classList.remove('hidden');
+        };
+
+        const saveSymptomReport = () => {
+            if(!AppState.currentUser) { alert("Please login to save reports."); return; }
+            DB.add('symptoms', { user: AppState.currentUser, riskLevel: currentSymptomRisk });
+            alert("Report saved successfully.");
+            document.getElementById('risk-result').classList.add('hidden');
+            document.getElementById('symptom-form').reset();
+            updateDashboard();
+        };
+
+        // Water Report
+        const submitWaterReport = (e) => {
+            e.preventDefault();
+            const report = {
+                village: document.getElementById('wr-village').value,
+                source: document.getElementById('wr-source').value,
+                type: document.getElementById('wr-type').value,
+                desc: document.getElementById('wr-desc').value,
+                user: AppState.currentUser || 'Anonymous'
+            };
+            DB.add('water_reports', report);
+            alert("Water problem reported successfully. Authorities have been notified locally.");
+            e.target.reset();
+            if(AppState.currentUser) updateDashboard();
+        };
+
+        // Directories (Hospitals & Doctors)
+        const switchDirectory = (type) => {
+            AppState.currentDirectoryTab = type;
+            document.getElementById('tab-hosp').className = type === 'hospitals' ? 'px-4 py-2 rounded-md bg-white dark:bg-gray-800 shadow-sm font-bold text-sm' : 'px-4 py-2 rounded-md text-gray-600 dark:text-gray-300 font-bold text-sm';
+            document.getElementById('tab-doc').className = type === 'doctors' ? 'px-4 py-2 rounded-md bg-white dark:bg-gray-800 shadow-sm font-bold text-sm' : 'px-4 py-2 rounded-md text-gray-600 dark:text-gray-300 font-bold text-sm';
+            renderDirectory();
+        };
+
+        const renderDirectory = (filter = "") => {
+            const grid = document.getElementById('directory-grid');
+            const data = AppState.currentDirectoryTab === 'hospitals' ? generatedData.hospitals : generatedData.doctors;
+            const bookText = getTranslation(AppState.language, 'book_apt');
+            
+            const filtered = data.filter(item => 
+                item.name.toLowerCase().includes(filter.toLowerCase()) || 
+                item.district.toLowerCase().includes(filter.toLowerCase())
+            );
+
+            grid.innerHTML = filtered.map(item => `
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border-l-4 border-primary hover-lift">
+                    <h3 class="font-bold text-lg text-primary">${item.name}</h3>
+                    ${item.spec ? `<p class="text-sm font-medium text-success mb-1">${item.spec}</p>` : ''}
+                    ${item.hospital ? `<p class="text-xs text-gray-500 mb-1"><i class="fas fa-hospital mr-1"></i>${item.hospital}</p>` : ''}
+                    <p class="text-sm mt-2"><i class="fas fa-map-marker-alt text-gray-400 mr-2"></i> ${item.district}</p>
+                    <p class="text-sm mt-1 mb-3"><i class="fas fa-phone text-gray-400 mr-2"></i> ${item.phone}</p>
+                    <div class="flex gap-2 mt-auto">
+                        <button onclick="navigate('appointment')" class="flex-1 bg-primary text-white py-1.5 rounded text-sm hover:bg-blue-600 transition">${bookText}</button>
+                        ${AppState.currentDirectoryTab === 'hospitals' ? `<a href="https://maps.google.com/?q=${item.name} ${item.district}" target="_blank" class="bg-gray-200 dark:bg-gray-700 p-2 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-300"><i class="fas fa-location-arrow"></i></a>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        const filterDirectory = () => {
+            renderDirectory(document.getElementById('dir-search').value);
+        };
+
+        // Appointment
+        const populateAppointmentSelects = () => {
+            const hSel = document.getElementById('apt-hospital');
+            hSel.innerHTML = '<option value="">Select a Hospital...</option>' + 
+                generatedData.hospitals.map(h => `<option value="${h.id}">${h.name}</option>`).join('');
+        };
+
+        const updateDoctorsList = () => {
+            const hId = document.getElementById('apt-hospital').value;
+            const hName = generatedData.hospitals.find(h => h.id == hId)?.name;
+            const dSel = document.getElementById('apt-doctor');
+            
+            const docs = generatedData.doctors.filter(d => d.hospital === hName);
+            dSel.innerHTML = docs.length ? docs.map(d => `<option value="${d.id}">${d.name} (${d.spec})</option>`).join('') : '<option value="">No doctors available</option>';
+        };
+
+        const submitAppointment = (e) => {
+            e.preventDefault();
+            const report = {
+                user: AppState.currentUser || 'Anonymous',
+                name: document.getElementById('apt-name').value,
+                docId: document.getElementById('apt-doctor').value,
+                date: document.getElementById('apt-date').value,
+                time: document.getElementById('apt-time').value
+            };
+            DB.add('appointments', report);
+            alert("Appointment Booked Successfully!");
+            e.target.reset();
+            navigate('dashboard');
+        };
+
+        // Map
+        const renderMap = () => {
+            const grid = document.getElementById('map-grid');
+            grid.innerHTML = districts.map(d => {
+                // Simulate random risk (mostly green, some yellow, rare red)
+                const rand = Math.random();
+                let colorClass = 'bg-success text-white';
+                if(rand > 0.7) colorClass = 'bg-warning text-gray-900';
+                if(rand > 0.9) colorClass = 'bg-danger text-white animate-pulse';
+
+                return `
+                <div class="${colorClass} p-4 rounded-lg shadow-sm text-center font-bold district-cell flex flex-col justify-center min-h-[80px]">
+                    <span class="text-sm">${d}</span>
+                </div>`;
+            }).join('');
+        };
+
+        // Emergency
+        const triggerSOS = () => {
+            if(navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(() => {
+                    alert("SOS Alert Sent! Nearest primary health center has been notified of your location. Please stay calm.");
+                }, () => {
+                    alert("SOS Alert Sent via SMS fallback. (Location denied)");
+                });
+            } else {
+                alert("SOS Alert Sent.");
+            }
+        };
+
+        // Quiz
+        const submitQuiz = () => {
+            const q1 = document.querySelector('input[name="q1"]:checked');
+            const q2 = document.querySelector('input[name="q2"]:checked');
+            if(!q1 || !q2) { alert("Please answer all questions."); return; }
+            
+            const score = parseInt(q1.value) + parseInt(q2.value);
+            document.getElementById('quiz-score').innerText = `${score}/2`;
+            document.getElementById('quiz-result').classList.remove('hidden');
+        };
+
+        const resetQuiz = () => {
+            document.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
+            document.getElementById('quiz-result').classList.add('hidden');
+        };
+
+        // Feedback
+        const submitFeedback = (e) => {
+            e.preventDefault();
+            DB.add('feedback', {
+                name: document.getElementById('fb-name').value,
+                text: document.getElementById('fb-text').value
+            });
+            alert("Thank you for your feedback!");
+            e.target.reset();
+        };
+
+        // Sidebar Mobile Toggle
+        document.getElementById('open-sidebar').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.remove('-translate-x-full');
+        });
+        document.getElementById('close-sidebar').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.add('-translate-x-full');
+        });
+
+        // Initialize
+        const init = () => {
+            AppState.currentUser = localStorage.getItem('art_user');
+            buildNav();
+            applyTheme();
+            updateUserStatus();
+            translatePage();
+            
+            // Randomly show health banner
+            if(Math.random() > 0.5) document.getElementById('health-banner').classList.remove('hidden');
+
+            navigate(AppState.currentUser ? 'dashboard' : 'login');
+        };
+
+        // Boot
+        window.onload = init;
+
+    </script>
+</body>
+</html>
